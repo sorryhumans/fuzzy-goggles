@@ -1,0 +1,13 @@
+{
+  "name": "leadmap",
+  "version": "1.0.0",
+  "description": "Lead generation web app with map visualization",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "express": "^4.21.2"
+  }
+}

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LEADMAP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --border: #1e1e1e;
+  --text: #f0f0f0;
+  --text-dim: #777;
+  --red: #e82127;
+  --red-dark: #b8191e;
+  --sidebar-w: 340px;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  height: 100vh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 24px 20px 0;
+}
+
+.logo {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: 3px;
+  margin-bottom: 24px;
+}
+
+.logo span { color: var(--red); }
+
+.field { margin-bottom: 12px; }
+
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus { border-color: var(--red); }
+
+.btn-search {
+  width: 100%;
+  padding: 12px;
+  margin-top: 4px;
+  margin-bottom: 16px;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.btn-search:hover { background: var(--red-dark); }
+.btn-search:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-search .spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.btn-search.loading .spinner { display: block; }
+.btn-search.loading .btn-label { display: none; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.results-meta {
+  padding: 0 20px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.badge {
+  background: rgba(232, 33, 39, 0.15);
+  color: var(--red);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  letter-spacing: 0.5px;
+}
+
+/* ── Lead list ── */
+.lead-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.lead-list::-webkit-scrollbar { width: 4px; }
+.lead-list::-webkit-scrollbar-track { background: transparent; }
+.lead-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+.lead-card {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.lead-card:hover, .lead-card.active {
+  background: rgba(232, 33, 39, 0.06);
+}
+
+.lead-card.active {
+  border-left: 3px solid var(--red);
+  padding-left: 17px;
+}
+
+.lead-card h3 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lead-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.lead-card-meta .star { color: #f5a623; }
+
+.lead-card-icons {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.lead-card-icons svg {
+  width: 14px;
+  height: 14px;
+  fill: var(--text-dim);
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ── Map ── */
+.map-wrap {
+  flex: 1;
+  position: relative;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+.leaflet-tile-pane { filter: brightness(0.7) saturate(0.4) invert(1) hue-rotate(180deg); }
+
+.leaflet-control-attribution { display: none !important; }
+
+/* Progress bar */
+.progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  z-index: 1000;
+  display: none;
+}
+
+.progress-bar.active { display: block; }
+
+.progress-bar::after {
+  content: '';
+  display: block;
+  height: 100%;
+  width: 30%;
+  background: var(--red);
+  animation: progress 1.2s ease-in-out infinite;
+}
+
+@keyframes progress {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  width: 440px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 28px;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-close:hover { color: var(--text); }
+
+.modal h2 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  padding-right: 30px;
+}
+
+.modal-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+.modal-rating .star { color: #f5a623; }
+
+.modal-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.modal-row-label {
+  flex-shrink: 0;
+  width: 80px;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding-top: 1px;
+}
+
+.modal-row-value {
+  flex: 1;
+  word-break: break-word;
+}
+
+.modal-row-value a {
+  color: var(--red);
+  text-decoration: none;
+}
+
+.modal-row-value a:hover { text-decoration: underline; }
+
+.copy-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: all 0.2s;
+}
+
+.copy-btn:hover { border-color: var(--red); color: var(--red); }
+
+.btn-copy-all {
+  width: 100%;
+  margin-top: 20px;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-copy-all:hover { background: var(--red); color: #fff; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1a1a1a;
+  border: 1px solid var(--red);
+  color: var(--text);
+  font-size: 13px;
+  padding: 10px 20px;
+  z-index: 3000;
+  transition: transform 0.3s ease;
+  pointer-events: none;
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── Custom marker ── */
+.diamond-marker {
+  width: 16px;
+  height: 16px;
+  background: var(--red);
+  transform: rotate(45deg);
+  border: 2px solid #fff;
+  box-shadow: 0 0 6px rgba(232, 33, 39, 0.6);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.diamond-marker.highlight {
+  transform: rotate(45deg) scale(1.4);
+  box-shadow: 0 0 14px rgba(232, 33, 39, 0.9);
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">LEAD<span>MAP</span></div>
+    <div class="field">
+      <label>ZIP Code</label>
+      <input type="text" id="zipInput" placeholder="e.g. 90210" maxlength="10" />
+    </div>
+    <div class="field">
+      <label>City</label>
+      <input type="text" id="cityInput" placeholder="e.g. Beverly Hills" />
+    </div>
+    <div class="field">
+      <label>Business Category</label>
+      <input type="text" id="catInput" placeholder="e.g. Dentists, Plumbers" />
+    </div>
+    <button class="btn-search" id="searchBtn">
+      <span class="btn-label">Search Leads</span>
+      <span class="spinner"></span>
+    </button>
+  </div>
+
+  <div class="results-meta" id="resultsMeta" style="display:none">
+    <span id="resultsCount">0 leads</span>
+    <span class="badge">&#9733; 4.0+</span>
+  </div>
+
+  <div class="lead-list" id="leadList">
+    <div class="empty-state" id="emptyState">
+      Enter ZIP, City &amp; Category<br />to find leads
+    </div>
+  </div>
+</aside>
+
+<!-- Map -->
+<div class="map-wrap">
+  <div class="progress-bar" id="progressBar"></div>
+  <div id="map"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const map = L.map('map', { zoomControl: false }).setView([39.5, -98.35], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+
+  let leads = [];
+  let markers = [];
+  let activeIdx = -1;
+
+  const zipInput = $('#zipInput');
+  const cityInput = $('#cityInput');
+  const catInput = $('#catInput');
+  const searchBtn = $('#searchBtn');
+  const leadList = $('#leadList');
+  const emptyState = $('#emptyState');
+  const resultsMeta = $('#resultsMeta');
+  const resultsCount = $('#resultsCount');
+  const progressBar = $('#progressBar');
+  const modalOverlay = $('#modalOverlay');
+  const modal = $('#modal');
+  const toast = $('#toast');
+
+  // ── Search ──
+  searchBtn.addEventListener('click', doSearch);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
+    if (e.key === 'Escape') closeModal();
+  });
+
+  async function doSearch() {
+    const zip = zipInput.value.trim();
+    const city = cityInput.value.trim();
+    const category = catInput.value.trim();
+    if (!zip || !city || !category) return showToast('Please enter ZIP, city, and category.');
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zip, city, category }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Search failed.');
+      leads = data;
+      renderResults();
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function setLoading(on) {
+    searchBtn.disabled = on;
+    searchBtn.classList.toggle('loading', on);
+    progressBar.classList.toggle('active', on);
+  }
+
+  // ── Render results ──
+  function renderResults() {
+    clearMarkers();
+    leadList.innerHTML = '';
+    activeIdx = -1;
+
+    if (!leads.length) {
+      leadList.appendChild(emptyState);
+      emptyState.textContent = 'No leads found with ★ 4.0+';
+      resultsMeta.style.display = 'none';
+      return;
+    }
+
+    resultsMeta.style.display = 'flex';
+    resultsCount.textContent = `${leads.length} lead${leads.length !== 1 ? 's' : ''}`;
+
+    const bounds = [];
+
+    leads.forEach((lead, i) => {
+      // Card
+      const card = document.createElement('div');
+      card.className = 'lead-card';
+      card.dataset.idx = i;
+      card.innerHTML = `
+        <h3>${esc(lead.title || lead.name || 'Unnamed')}</h3>
+        <div class="lead-card-meta">
+          <span class="star">&#9733;</span> ${lead.totalScore ?? '—'}
+          <span style="margin-left:2px">(${lead.reviewsCount ?? 0})</span>
+          <span class="lead-card-icons">
+            ${lead.phone ? phoneSVG : ''}
+            ${lead.website || lead.url ? globeSVG : ''}
+          </span>
+        </div>`;
+      card.addEventListener('click', () => selectLead(i));
+      leadList.appendChild(card);
+
+      // Marker
+      if (lead.location?.lat && lead.location?.lng) {
+        const el = L.divIcon({ className: '', html: '<div class="diamond-marker"></div>', iconSize: [16, 16], iconAnchor: [8, 8] });
+        const m = L.marker([lead.location.lat, lead.location.lng], { icon: el }).addTo(map);
+        m.on('click', () => selectLead(i));
+        markers.push(m);
+        bounds.push([lead.location.lat, lead.location.lng]);
+      } else {
+        markers.push(null);
+      }
+    });
+
+    if (bounds.length) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+  }
+
+  function clearMarkers() {
+    markers.forEach((m) => m && map.removeLayer(m));
+    markers = [];
+  }
+
+  // ── Select lead ──
+  function selectLead(i) {
+    activeIdx = i;
+    document.querySelectorAll('.lead-card').forEach((c) => c.classList.remove('active'));
+    const card = document.querySelector(`.lead-card[data-idx="${i}"]`);
+    if (card) {
+      card.classList.add('active');
+      card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    document.querySelectorAll('.diamond-marker').forEach((d) => d.classList.remove('highlight'));
+    if (markers[i]) {
+      const el = markers[i].getElement();
+      if (el) el.querySelector('.diamond-marker')?.classList.add('highlight');
+      map.panTo(markers[i].getLatLng(), { animate: true });
+    }
+
+    openModal(leads[i]);
+  }
+
+  // ── Modal ──
+  function openModal(lead) {
+    const name = lead.title || lead.name || 'Unnamed';
+    const phone = lead.phone || '';
+    const email = lead.email || '';
+    const website = lead.website || lead.url || '';
+    const address = lead.address || lead.street || '';
+    const hours = formatHours(lead.openingHours);
+    const cat = lead.categoryName || lead.category || '';
+
+    modal.innerHTML = `
+      <button class="modal-close" id="modalClose">&times;</button>
+      <h2>${esc(name)}</h2>
+      <div class="modal-rating">
+        <span class="star">&#9733;</span> ${lead.totalScore ?? '—'}
+        <span>(${lead.reviewsCount ?? 0} reviews)</span>
+      </div>
+      ${row('Address', esc(address))}
+      ${row('Phone', phone ? `${esc(phone)} <button class="copy-btn" data-copy="${esc(phone, true)}">Copy</button>` : '—')}
+      ${row('Email', email ? `${esc(email)} <button class="copy-btn" data-copy="${esc(email, true)}">Copy</button>` : '—')}
+      ${row('Website', website ? `<a href="${esc(website, true)}" target="_blank" rel="noopener">${truncate(website, 40)}</a>` : '—')}
+      ${row('Hours', hours || '—')}
+      ${row('Category', esc(cat) || '—')}
+      <button class="btn-copy-all" id="copyAllBtn">Copy All Info</button>`;
+
+    modal.querySelectorAll('.copy-btn').forEach((b) => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        copyText(b.dataset.copy);
+        showToast('Copied!');
+      });
+    });
+
+    $('#copyAllBtn').addEventListener('click', () => {
+      const text = [
+        name,
+        address ? `Address: ${address}` : '',
+        phone ? `Phone: ${phone}` : '',
+        email ? `Email: ${email}` : '',
+        website ? `Website: ${website}` : '',
+        hours ? `Hours: ${hours.replace(/<br\s*\/?>/g, ', ')}` : '',
+        cat ? `Category: ${cat}` : '',
+        `Rating: ${lead.totalScore ?? '—'} (${lead.reviewsCount ?? 0} reviews)`,
+      ].filter(Boolean).join('\n');
+      copyText(text);
+      showToast('All info copied!');
+    });
+
+    $('#modalClose').addEventListener('click', closeModal);
+    modalOverlay.classList.add('open');
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+  }
+
+  function closeModal() { modalOverlay.classList.remove('open'); }
+
+  function row(label, value) {
+    return `<div class="modal-row"><span class="modal-row-label">${label}</span><span class="modal-row-value">${value}</span></div>`;
+  }
+
+  // ── Toast ──
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+
+  // ── Helpers ──
+  function esc(str, attr = false) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return attr ? d.innerHTML.replace(/"/g, '&quot;') : d.innerHTML;
+  }
+
+  function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+
+  function copyText(t) { navigator.clipboard.writeText(t).catch(() => {}); }
+
+  function formatHours(h) {
+    if (!h) return '';
+    if (typeof h === 'string') return esc(h);
+    if (Array.isArray(h)) return h.map((d) => esc(typeof d === 'string' ? d : `${d.day}: ${d.hours}`)).join('<br>');
+    return '';
+  }
+
+  const phoneSVG = `<svg viewBox="0 0 24 24"><path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24 11.36 11.36 0 003.58.57 1 1 0 011 1v3.49a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1 11.36 11.36 0 00.57 3.58 1 1 0 01-.25 1.01l-2.2 2.2z"/></svg>`;
+  const globeSVG = `<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 2a8 8 0 016.32 3.1A12.93 12.93 0 0012 5.5a12.93 12.93 0 00-6.32 1.6A8 8 0 0112 4zm0 16a8 8 0 01-6.32-3.1A12.93 12.93 0 0012 18.5a12.93 12.93 0 006.32-1.6A8 8 0 0112 20zm0-9a1 1 0 110 2 1 1 0 010-2zM2 12h4m12 0h4M12 2v4m0 12v4"/></svg>`;
+})();
+</script>
+</body>
+</html>
