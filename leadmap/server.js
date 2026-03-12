@@ -6,11 +6,11 @@ const path = require('path');
 const app = express();
 const PORT = 3000;
 
-function geocodeZip(zip, city) {
+function nominatimGet(queryPath) {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'nominatim.openstreetmap.org',
-      path: `/search?postalcode=${encodeURIComponent(zip)}&city=${encodeURIComponent(city)}&format=json&limit=1`,
+      path: queryPath,
       method: 'GET',
       headers: { 'User-Agent': 'LeadMap/1.0' },
       timeout: 10000
@@ -19,17 +19,31 @@ function geocodeZip(zip, city) {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
-        try {
-          const data = JSON.parse(body);
-          if (!data.length) return reject(new Error('no_results'));
-          resolve({ lat: data[0].lat, lng: data[0].lon });
-        } catch { reject(new Error('no_results')); }
+        try { resolve(JSON.parse(body)); }
+        catch { resolve([]); }
       });
     });
     req.on('error', reject);
     req.on('timeout', () => { req.destroy(); reject(new Error('no_results')); });
     req.end();
   });
+}
+
+async function geocodeZip(zip, city) {
+  const attempts = [
+    `/search?postalcode=${encodeURIComponent(zip)}&countrycode=gb&format=json&limit=1`,
+    `/search?q=${encodeURIComponent(zip + ',' + city)}&format=json&limit=1`,
+    `/search?q=${encodeURIComponent(city)}&format=json&limit=1`,
+  ];
+
+  for (const path of attempts) {
+    const data = await nominatimGet(path);
+    if (data.length) {
+      return { lat: data[0].lat, lng: data[0].lon };
+    }
+  }
+
+  throw new Error('no_results');
 }
 
 function apifyRequest(body) {
