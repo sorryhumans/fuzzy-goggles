@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -20,6 +21,7 @@
   --text-dim: #777;
   --red: #e82127;
   --red-dark: #b8191e;
+  --green: #22c55e;
   --sidebar-w: 340px;
 }
 
@@ -47,15 +49,53 @@ body {
   padding: 24px 20px 0;
 }
 
+.logo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
 .logo {
   font-family: 'Rajdhani', sans-serif;
   font-weight: 700;
   font-size: 26px;
   letter-spacing: 3px;
-  margin-bottom: 24px;
 }
 
 .logo span { color: var(--red); }
+
+/* ── Auth bar ── */
+.auth-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-bar .user-email {
+  font-size: 11px;
+  color: var(--text-dim);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-auth {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-auth:hover { border-color: var(--text); color: var(--text); }
 
 .field { margin-bottom: 12px; }
 
@@ -87,7 +127,7 @@ body {
   width: 100%;
   padding: 12px;
   margin-top: 4px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   background: var(--red);
   color: #fff;
   border: none;
@@ -121,6 +161,32 @@ body {
 .btn-search.loading .btn-label { display: none; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Upgrade button ── */
+.btn-upgrade {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 16px;
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-upgrade:hover { background: var(--red); color: #fff; }
+
+.btn-upgrade.pro {
+  border-color: var(--green);
+  color: var(--green);
+  cursor: default;
+  pointer-events: none;
+}
 
 .results-meta {
   padding: 0 20px 12px;
@@ -276,7 +342,7 @@ body {
   100% { transform: translateX(400%); }
 }
 
-/* ── Modal ── */
+/* ── Modal (shared for lead detail + auth) ── */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -394,6 +460,76 @@ body {
 }
 
 .btn-copy-all:hover { background: var(--red); color: #fff; }
+
+/* ── Auth modal fields ── */
+.auth-field {
+  margin-bottom: 14px;
+}
+
+.auth-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.auth-field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.auth-field input:focus { border-color: var(--red); }
+
+.auth-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.auth-actions button {
+  flex: 1;
+  padding: 10px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.auth-actions .btn-signin {
+  background: var(--red);
+  color: #fff;
+}
+
+.auth-actions .btn-signin:hover { background: var(--red-dark); }
+
+.auth-actions .btn-signup {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.auth-actions .btn-signup:hover { border-color: var(--text); }
+
+.auth-error {
+  color: var(--red);
+  font-size: 12px;
+  margin-top: 10px;
+  min-height: 18px;
+}
 
 /* ── Toast ── */
 .toast {
@@ -599,7 +735,12 @@ body {
 <!-- Sidebar -->
 <aside class="sidebar">
   <div class="sidebar-header">
-    <div class="logo">LEAD<span>MAP</span></div>
+    <div class="logo-row">
+      <div class="logo">LEAD<span>MAP</span></div>
+      <div class="auth-bar" id="authBar">
+        <button class="btn-auth" id="authBtn">Sign In</button>
+      </div>
+    </div>
     <div class="field">
       <label>ZIP Code</label>
       <input type="text" id="zipInput" placeholder="e.g. 90210" maxlength="10" />
@@ -616,6 +757,7 @@ body {
       <span class="btn-label">Search Leads</span>
       <span class="spinner"></span>
     </button>
+    <button class="btn-upgrade" id="upgradeBtn">&#9889; UPGRADE TO PRO — $9.99/mo</button>
   </div>
 
   <div class="results-meta" id="resultsMeta" style="display:none">
@@ -638,9 +780,32 @@ body {
   <div id="map"></div>
 </div>
 
-<!-- Modal -->
+<!-- Lead Detail Modal -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modal"></div>
+</div>
+
+<!-- Auth Modal -->
+<div class="modal-overlay" id="authOverlay">
+  <div class="modal" id="authModal" style="width:360px">
+    <button class="modal-close" id="authModalClose">&times;</button>
+    <h2>Sign In</h2>
+    <div style="margin-top:18px">
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="authEmail" placeholder="you@email.com" />
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="authPassword" placeholder="Min 6 characters" />
+      </div>
+      <div class="auth-actions">
+        <button class="btn-signin" id="btnSignIn">Sign In</button>
+        <button class="btn-signup" id="btnSignUp">Sign Up</button>
+      </div>
+      <div class="auth-error" id="authError"></div>
+    </div>
+  </div>
 </div>
 
 <!-- Toast -->
@@ -649,6 +814,14 @@ body {
 </div><!-- /app -->
 
 <script>
+const SUPABASE_URL = 'https://wxmjigbfkciuqeqgegrb.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_oThGtUUYCmmIcfSQW0ykmA_VRP5Qq0D';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let accessToken = null;
+let userPlan = 'free';
+
 // ── Landing screen transition ──
 document.getElementById('ctaBtn').addEventListener('click', () => {
   const landing = document.getElementById('landingScreen');
@@ -659,6 +832,14 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
     landing.style.display = 'none';
   }, { once: true });
 });
+
+// ── Handle ?upgraded=true ──
+if (new URLSearchParams(window.location.search).get('upgraded') === 'true') {
+  history.replaceState(null, '', window.location.pathname);
+  document.getElementById('landingScreen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  setTimeout(() => showToast('Welcome to Pro! You now get 50 leads per search'), 500);
+}
 
 (() => {
   const $ = (s) => document.querySelector(s);
@@ -683,6 +864,165 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
   const modal = $('#modal');
   const toast = $('#toast');
   const exportBtn = $('#exportBtn');
+  const authBar = $('#authBar');
+  const authOverlay = $('#authOverlay');
+  const authModalClose = $('#authModalClose');
+  const authEmail = $('#authEmail');
+  const authPassword = $('#authPassword');
+  const btnSignIn = $('#btnSignIn');
+  const btnSignUp = $('#btnSignUp');
+  const authError = $('#authError');
+  const upgradeBtn = $('#upgradeBtn');
+
+  // ── Auth UI (delegated so it survives innerHTML replacements) ──
+  authBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-auth');
+    if (!btn) return;
+    if (currentUser) {
+      sb.auth.signOut({ scope: 'local' });
+      currentUser = null;
+      accessToken = null;
+      userPlan = 'free';
+      renderAuthBar();
+      showToast('Signed out.');
+    } else {
+      authError.textContent = '';
+      authEmail.value = '';
+      authPassword.value = '';
+      authOverlay.classList.add('open');
+    }
+  });
+
+  authModalClose.addEventListener('click', () => authOverlay.classList.remove('open'));
+  authOverlay.addEventListener('click', (e) => { if (e.target === authOverlay) authOverlay.classList.remove('open'); });
+
+  btnSignIn.addEventListener('click', async () => {
+    authError.textContent = '';
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    if (!email || !password) { authError.textContent = 'Email and password required.'; return; }
+    btnSignIn.disabled = true;
+    btnSignIn.textContent = 'Signing in...';
+    try {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) authError.textContent = error.message;
+    } catch (err) {
+      authError.textContent = err.message || 'Connection error. Try again.';
+    } finally {
+      btnSignIn.disabled = false;
+      btnSignIn.textContent = 'Sign In';
+    }
+  });
+
+  btnSignUp.addEventListener('click', async () => {
+    authError.textContent = '';
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+    if (!email || !password) { authError.textContent = 'Email and password required.'; return; }
+    if (password.length < 6) { authError.textContent = 'Password must be at least 6 characters.'; return; }
+
+    btnSignUp.disabled = true;
+    btnSignUp.textContent = 'Creating...';
+    try {
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) { authError.textContent = error.message; return; }
+
+      if (data.user) {
+        const token = data.session?.access_token;
+        await fetch('/api/ensure-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ userId: data.user.id })
+        });
+      }
+
+      authOverlay.classList.remove('open');
+      showToast('Account created! Check your email to confirm.');
+    } catch (err) {
+      authError.textContent = err.message || 'Connection error. Try again.';
+    } finally {
+      btnSignUp.disabled = false;
+      btnSignUp.textContent = 'Sign Up';
+    }
+  });
+
+  // ── Supabase auth state listener ──
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      accessToken = session.access_token;
+      authOverlay.classList.remove('open');
+      renderAuthBar();
+      if (event === 'SIGNED_IN') showToast('Signed in!');
+      await fetchUserPlan();
+      renderUpgradeBtn();
+    } else {
+      currentUser = null;
+      accessToken = null;
+      userPlan = 'free';
+      renderAuthBar();
+    }
+  });
+
+  async function fetchUserPlan() {
+    if (!currentUser) { userPlan = 'free'; return; }
+    const { data } = await sb
+      .from('users')
+      .select('plan')
+      .eq('id', currentUser.id)
+      .single();
+    userPlan = data?.plan || 'free';
+  }
+
+  function renderAuthBar() {
+    if (currentUser) {
+      authBar.innerHTML = `
+        <span class="user-email">${currentUser.email}</span>
+        <button class="btn-auth">Sign Out</button>`;
+    } else {
+      authBar.innerHTML = `<button class="btn-auth">Sign In</button>`;
+    }
+    renderUpgradeBtn();
+  }
+
+  function renderUpgradeBtn() {
+    if (currentUser && userPlan === 'pro') {
+      upgradeBtn.textContent = '\u2713 PRO PLAN';
+      upgradeBtn.classList.add('pro');
+      upgradeBtn.style.display = 'none';
+    } else {
+      upgradeBtn.innerHTML = '&#9889; UPGRADE TO PRO — $9.99/mo';
+      upgradeBtn.classList.remove('pro');
+      upgradeBtn.style.display = '';
+    }
+  }
+
+  // ── Upgrade ──
+  upgradeBtn.addEventListener('click', async () => {
+    if (userPlan === 'pro') return;
+    if (!currentUser) {
+      authOverlay.classList.add('open');
+      showToast('Sign in first to upgrade.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      window.location.href = data.url;
+    } catch (err) {
+      showToast(err.message);
+    }
+  });
 
   // ── CSV Export ──
   exportBtn.addEventListener('click', downloadCSV);
@@ -728,8 +1068,8 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
   // ── Search ──
   searchBtn.addEventListener('click', doSearch);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Enter' && !searchBtn.disabled && !authOverlay.classList.contains('open')) doSearch();
+    if (e.key === 'Escape') { closeModal(); authOverlay.classList.remove('open'); }
   });
 
   async function doSearch() {
@@ -740,9 +1080,12 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
 
     setLoading(true);
     try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (currentUser && accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
       const res = await fetch('/api/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ zip, city, category }),
       });
       const data = await res.json();
@@ -770,7 +1113,7 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
 
     if (!leads.length) {
       leadList.appendChild(emptyState);
-      emptyState.textContent = 'No leads found with ★ 4.0+';
+      emptyState.textContent = 'No leads found with \u2605 4.0+';
       resultsMeta.style.display = 'none';
       exportBtn.style.display = 'none';
       return;
@@ -783,14 +1126,13 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
     const bounds = [];
 
     leads.forEach((lead, i) => {
-      // Card
       const card = document.createElement('div');
       card.className = 'lead-card';
       card.dataset.idx = i;
       card.innerHTML = `
         <h3>${esc(lead.title || lead.name || 'Unnamed')}</h3>
         <div class="lead-card-meta">
-          <span class="star">&#9733;</span> ${lead.totalScore ?? '—'}
+          <span class="star">&#9733;</span> ${lead.totalScore ?? '\u2014'}
           <span style="margin-left:2px">(${lead.reviewsCount ?? 0})</span>
           <span class="lead-card-icons">
             ${lead.phone ? phoneSVG : ''}
@@ -800,7 +1142,6 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
       card.addEventListener('click', () => selectLead(i));
       leadList.appendChild(card);
 
-      // Marker
       if (lead.location?.lat && lead.location?.lng) {
         const el = L.divIcon({ className: '', html: '<div class="diamond-marker"></div>', iconSize: [16, 16], iconAnchor: [8, 8] });
         const m = L.marker([lead.location.lat, lead.location.lng], { icon: el }).addTo(map);
@@ -840,7 +1181,7 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
     openModal(leads[i]);
   }
 
-  // ── Modal ──
+  // ── Lead Detail Modal ──
   function openModal(lead) {
     const name = lead.title || lead.name || 'Unnamed';
     const phone = lead.phone || '';
@@ -854,15 +1195,15 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
       <button class="modal-close" id="modalClose">&times;</button>
       <h2>${esc(name)}</h2>
       <div class="modal-rating">
-        <span class="star">&#9733;</span> ${lead.totalScore ?? '—'}
+        <span class="star">&#9733;</span> ${lead.totalScore ?? '\u2014'}
         <span>(${lead.reviewsCount ?? 0} reviews)</span>
       </div>
       ${row('Address', esc(address))}
-      ${row('Phone', phone ? `${esc(phone)} <button class="copy-btn" data-copy="${esc(phone, true)}">Copy</button>` : '—')}
-      ${row('Email', email ? `${esc(email)} <button class="copy-btn" data-copy="${esc(email, true)}">Copy</button>` : '—')}
-      ${row('Website', website ? `<a href="${esc(website, true)}" target="_blank" rel="noopener">${truncate(website, 40)}</a>` : '—')}
-      ${row('Hours', hours || '—')}
-      ${row('Category', esc(cat) || '—')}
+      ${row('Phone', phone ? `${esc(phone)} <button class="copy-btn" data-copy="${esc(phone, true)}">Copy</button>` : '\u2014')}
+      ${row('Email', email ? `${esc(email)} <button class="copy-btn" data-copy="${esc(email, true)}">Copy</button>` : '\u2014')}
+      ${row('Website', website ? `<a href="${esc(website, true)}" target="_blank" rel="noopener">${truncate(website, 40)}</a>` : '\u2014')}
+      ${row('Hours', hours || '\u2014')}
+      ${row('Category', esc(cat) || '\u2014')}
       <button class="btn-copy-all" id="copyAllBtn">Copy All Info</button>`;
 
     modal.querySelectorAll('.copy-btn').forEach((b) => {
@@ -882,7 +1223,7 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
         website ? `Website: ${website}` : '',
         hours ? `Hours: ${hours.replace(/<br\s*\/?>/g, ', ')}` : '',
         cat ? `Category: ${cat}` : '',
-        `Rating: ${lead.totalScore ?? '—'} (${lead.reviewsCount ?? 0} reviews)`,
+        `Rating: ${lead.totalScore ?? '\u2014'} (${lead.reviewsCount ?? 0} reviews)`,
       ].filter(Boolean).join('\n');
       copyText(text);
       showToast('All info copied!');
@@ -899,7 +1240,8 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
     return `<div class="modal-row"><span class="modal-row-label">${label}</span><span class="modal-row-value">${value}</span></div>`;
   }
 
-  // ── Toast ──
+  // ── Toast (expose globally for upgraded check) ──
+  window.showToast = showToast;
   function showToast(msg) {
     toast.textContent = msg;
     toast.classList.add('show');
@@ -914,7 +1256,7 @@ document.getElementById('ctaBtn').addEventListener('click', () => {
     return attr ? d.innerHTML.replace(/"/g, '&quot;') : d.innerHTML;
   }
 
-  function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+  function truncate(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
 
   function copyText(t) { navigator.clipboard.writeText(t).catch(() => {}); }
 
