@@ -6,7 +6,7 @@ const { createClient } = require('@supabase/supabase-js');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
 const supabase = createClient(
