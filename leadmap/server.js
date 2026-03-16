@@ -3,16 +3,18 @@ const express = require('express');
 const https = require('https');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? require('stripe')(process.env.STRIPE_SECRET_KEY)
+  : null;
+
+const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  : null;
 
 // ── Stripe webhook (must be registered before express.json) ──
 app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -248,8 +250,10 @@ app.post('/api/create-checkout', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`LEADMAP running → http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`LEADMAP running → http://localhost:${PORT}`);
+  });
+}
 
 module.exports = app;

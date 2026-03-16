@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "leadmap/server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["leadmap/public/**"]
+      }
     }
   ],
   "routes": [
