@@ -18,6 +18,8 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
 
 // ── Stripe webhook (must be registered before express.json) ──
 app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe || !supabase) return res.status(503).json({ error: 'Service not configured' });
+
   const sig = req.headers['stripe-signature'];
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -134,6 +136,7 @@ function apifyRequest(body) {
 
 // ── Auth helper ──
 async function resolveUser(req) {
+  if (!supabase) return null;
   try {
     const auth = req.headers.authorization;
     if (!auth || !auth.startsWith('Bearer ')) return null;
@@ -147,6 +150,7 @@ async function resolveUser(req) {
 }
 
 async function getUserPlan(userId) {
+  if (!supabase) return 'free';
   const { data } = await supabase
     .from('users')
     .select('plan')
@@ -165,6 +169,8 @@ app.get('/api/user-plan', async (req, res) => {
 
 // ── POST /api/ensure-user (called after sign-up to seed users table) ──
 app.post('/api/ensure-user', async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Database not configured' });
+
   let user = await resolveUser(req);
 
   if (!user && req.body.userId) {
@@ -230,6 +236,8 @@ app.post('/api/search', async (req, res) => {
 
 // ── POST /api/create-checkout ──
 app.post('/api/create-checkout', async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Payments not configured' });
+
   const user = await resolveUser(req);
   if (!user) {
     return res.status(401).json({ error: 'Sign in required.' });
