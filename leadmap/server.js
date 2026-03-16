@@ -16,8 +16,11 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
   : null;
 
+const wrap = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
 // ── Stripe webhook (must be registered before express.json) ──
-app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/api/webhook', express.raw({ type: 'application/json' }), wrap(async (req, res) => {
   if (!stripe || !supabase) return res.status(503).json({ error: 'Service not configured' });
 
   const sig = req.headers['stripe-signature'];
@@ -61,7 +64,7 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
   }
 
   res.json({ received: true });
-});
+}));
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -160,15 +163,15 @@ async function getUserPlan(userId) {
 }
 
 // ── GET /api/user-plan ──
-app.get('/api/user-plan', async (req, res) => {
+app.get('/api/user-plan', wrap(async (req, res) => {
   const user = await resolveUser(req);
   if (!user) return res.json({ plan: 'free' });
   const plan = await getUserPlan(user.id);
   res.json({ plan });
-});
+}));
 
 // ── POST /api/ensure-user (called after sign-up to seed users table) ──
-app.post('/api/ensure-user', async (req, res) => {
+app.post('/api/ensure-user', wrap(async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database not configured' });
 
   let user = await resolveUser(req);
@@ -186,10 +189,10 @@ app.post('/api/ensure-user', async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
-});
+}));
 
 // ── POST /api/search ──
-app.post('/api/search', async (req, res) => {
+app.post('/api/search', wrap(async (req, res) => {
   const { zip, city, category } = req.body;
   if (!zip || !city || !category) {
     return res.status(400).json({ error: 'zip, city, and category are required.' });
@@ -232,10 +235,10 @@ app.post('/api/search', async (req, res) => {
     }
     res.status(500).json({ error: err.message });
   }
-});
+}));
 
 // ── POST /api/create-checkout ──
-app.post('/api/create-checkout', async (req, res) => {
+app.post('/api/create-checkout', wrap(async (req, res) => {
   if (!stripe) return res.status(503).json({ error: 'Payments not configured' });
 
   const user = await resolveUser(req);
@@ -255,6 +258,31 @@ app.post('/api/create-checkout', async (req, res) => {
     res.json({ url: session.url });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+}));
+
+// ── GET /api/health (diagnostics) ──
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    supabase: !!supabase,
+    stripe: !!stripe,
+    env: {
+      SUPABASE_URL: !!process.env.SUPABASE_URL,
+      SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
+      STRIPE_SECRET_KEY: !!process.env.STRIPE_SECRET_KEY,
+      STRIPE_PRICE_ID: !!process.env.STRIPE_PRICE_ID,
+      APIFY_TOKEN: !!process.env.APIFY_TOKEN,
+      APP_URL: process.env.APP_URL || '(not set)',
+    }
+  });
+});
+
+// ── Global error handler (catches unhandled async errors) ──
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.message);
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

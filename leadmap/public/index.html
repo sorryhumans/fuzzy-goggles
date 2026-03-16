@@ -1391,8 +1391,12 @@ if (new URLSearchParams(window.location.search).get('upgraded') === 'true') {
   }
 
   // ── Toast (expose globally for upgraded check) ──
+  const authErrorPatterns = ['authentication token', 'not found or authentication', 'JWT', 'invalid claim', 'token is not valid'];
   window.showToast = showToast;
   function showToast(msg) {
+    if (authErrorPatterns.some(p => msg?.toLowerCase?.().includes(p.toLowerCase()))) {
+      msg = 'Session expired. Please sign in again.';
+    }
     toast.textContent = msg;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 2500);
