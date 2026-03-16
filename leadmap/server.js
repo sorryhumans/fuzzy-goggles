@@ -64,44 +64,45 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Helpers: geocoding & Apify ──
 
-function nominatimGet(queryPath) {
+function httpGet(url, headers = {}) {
   return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
     const options = {
-      hostname: 'nominatim.openstreetmap.org',
-      path: queryPath,
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
       method: 'GET',
-      headers: { 'User-Agent': 'LeadMap/1.0' },
+      headers,
       timeout: 10000
     };
     const req = https.request(options, (res) => {
       let body = '';
       res.on('data', chunk => body += chunk);
-      res.on('end', () => {
-        try { resolve(JSON.parse(body)); }
-        catch { resolve([]); }
-      });
+      res.on('end', () => resolve(body));
     });
     req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('no_results')); });
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
     req.end();
   });
 }
 
-async function geocodeZip(zip, city) {
+async function geocodeLocation(zip, city) {
   const attempts = [
-    `/search?postalcode=${encodeURIComponent(zip)}&countrycode=gb&format=json&limit=1`,
-    `/search?q=${encodeURIComponent(zip + ',' + city)}&format=json&limit=1`,
-    `/search?q=${encodeURIComponent(city)}&format=json&limit=1`,
+    `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zip)}&countrycode=gb&format=json&limit=1`,
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(zip + ' ' + city)}&format=json&limit=1`,
+    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&countrycode=gb&format=json&limit=1`
   ];
 
-  for (const p of attempts) {
-    const data = await nominatimGet(p);
-    if (data.length) {
-      return { lat: data[0].lat, lng: data[0].lon };
-    }
+  for (const url of attempts) {
+    try {
+      const result = await httpGet(url, { 'User-Agent': 'LeadMap/1.0' });
+      const data = JSON.parse(result);
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    } catch (e) {}
+    await new Promise(r => setTimeout(r, 1000));
   }
-
-  throw new Error('no_results');
+  return null;
 }
 
 function apifyRequest(body) {
@@ -152,6 +153,14 @@ async function getUserPlan(userId) {
   return data?.plan || 'free';
 }
 
+// ── GET /api/user-plan ──
+app.get('/api/user-plan', async (req, res) => {
+  const user = await resolveUser(req);
+  if (!user) return res.json({ plan: 'free' });
+  const plan = await getUserPlan(user.id);
+  res.json({ plan });
+});
+
 // ── POST /api/ensure-user (called after sign-up to seed users table) ──
 app.post('/api/ensure-user', async (req, res) => {
   let user = await resolveUser(req);
@@ -183,26 +192,24 @@ app.post('/api/search', async (req, res) => {
     const user = await resolveUser(req);
     if (user) {
       const plan = await getUserPlan(user.id);
-      if (plan === 'pro') limit = 20;
+      if (plan === 'pro') limit = 15;
     }
   } catch { /* auth failed — use default limit */ }
 
-  let coords;
-  try {
-    coords = await geocodeZip(zip, city);
-  } catch {
-    return res.status(400).json({ error: 'Could not find location for ZIP code' });
-  }
+  const coords = await geocodeLocation(zip, city);
 
   try {
-    const data = await apifyRequest({
+    const apifyBody = {
       searchStringsArray: [`${category} in ${zip} ${city}`],
       maxCrawledPlacesPerSearch: limit,
       language: 'en',
-      lat: coords.lat,
-      lng: coords.lng,
-      zoom: 13,
-    });
+    };
+    if (coords) {
+      apifyBody.lat = coords.lat;
+      apifyBody.lng = coords.lng;
+      apifyBody.zoom = 13;
+    }
+    const data = await apifyRequest(apifyBody);
 
     if (!Array.isArray(data)) {
       const msg = data?.error?.message || data?.message || 'Apify returned invalid response';

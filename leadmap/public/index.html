@@ -11,143 +11,157 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
 :root {
   --bg: #0a0a0a;
-  --surface: #111111;
-  --border: #1e1e1e;
-  --text: #f0f0f0;
-  --text-dim: #777;
+  --surface: #111;
+  --border: #1a1a1a;
+  --text: #fff;
+  --text-dim: #666;
   --red: #e82127;
-  --red-dark: #b8191e;
-  --green: #22c55e;
-  --sidebar-w: 340px;
+  --red-dark: #c41e24;
+  --green: #4ade80;
 }
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
+  background: #0a0a0a;
+  color: #fff;
   font-family: 'Inter', sans-serif;
-  background: var(--bg);
-  color: var(--text);
   height: 100vh;
   overflow: hidden;
-  display: flex;
-}
-
-/* ── Sidebar ── */
-.sidebar {
-  width: var(--sidebar-w);
-  min-width: var(--sidebar-w);
-  height: 100vh;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
 }
 
-.sidebar-header {
-  padding: 24px 20px 0;
-}
-
-.logo-row {
+/* ── Header ── */
+header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  padding: 0 24px;
+  height: 56px;
+  min-height: 56px;
+  border-bottom: 1px solid #1a1a1a;
+  background: #0a0a0a;
 }
 
 .logo {
   font-family: 'Rajdhani', sans-serif;
   font-weight: 700;
-  font-size: 26px;
-  letter-spacing: 3px;
+  font-size: 20px;
+  letter-spacing: 5px;
 }
 
-.logo span { color: var(--red); }
+.logo .red { color: #e82127; }
 
-/* ── Auth bar ── */
+/* ── Auth ── */
 .auth-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.auth-bar .user-email {
+.user-email {
   font-size: 11px;
-  color: var(--text-dim);
-  max-width: 110px;
+  color: #555;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.btn-auth {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
+.auth-btn {
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  color: #666;
   font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
   font-weight: 600;
-  font-size: 12px;
-  letter-spacing: 0.8px;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  padding: 4px 10px;
+  padding: 7px 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.2s;
+  white-space: nowrap;
 }
 
-.btn-auth:hover { border-color: var(--text); color: var(--text); }
+.auth-btn:hover { border-color: #555; color: #999; }
 
-.field { margin-bottom: 12px; }
+/* ── Layout ── */
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 320px;
+  min-width: 320px;
+  background: #0a0a0a;
+  border-right: 1px solid #1a1a1a;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-section {
+  padding: 32px 24px 24px;
+}
+
+.field { margin-bottom: 24px; }
 
 .field label {
   display: block;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 600;
+  letter-spacing: 3px;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: var(--text-dim);
-  margin-bottom: 6px;
+  color: #444;
+  margin-bottom: 10px;
 }
 
 .field input {
   width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #2a2a2a;
+  color: #fff;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
-  padding: 10px 12px;
+  padding: 8px 0;
   outline: none;
   transition: border-color 0.2s;
 }
 
-.field input:focus { border-color: var(--red); }
+.field input:focus { border-bottom-color: #555; }
+.field input::placeholder { color: #333; }
 
-.btn-search {
+/* ── Buttons ── */
+.search-btn {
   width: 100%;
-  padding: 12px;
-  margin-top: 4px;
-  margin-bottom: 8px;
-  background: var(--red);
+  background: #e82127;
   color: #fff;
   border: none;
   font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
   font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 1.5px;
+  letter-spacing: 3px;
   text-transform: uppercase;
+  height: 46px;
   cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: background 0.2s;
 }
 
-.btn-search:hover { background: var(--red-dark); }
-.btn-search:disabled { opacity: 0.6; cursor: not-allowed; }
+.search-btn:hover { background: #c41e24; }
+.search-btn:disabled { background: #1a1a1a; color: #444; cursor: not-allowed; }
 
-.btn-search .spinner {
+.search-btn .spinner {
   display: none;
   width: 16px;
   height: 16px;
@@ -157,35 +171,42 @@ body {
   animation: spin 0.6s linear infinite;
 }
 
-.btn-search.loading .spinner { display: block; }
-.btn-search.loading .btn-label { display: none; }
+.search-btn.loading .spinner { display: block; }
+.search-btn.loading .btn-label { display: none; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Upgrade button ── */
-.btn-upgrade {
+.upgrade-btn {
   width: 100%;
-  padding: 10px;
-  margin-bottom: 16px;
   background: transparent;
-  border: 1px solid var(--red);
-  color: var(--red);
+  border: 1px solid #2a2a2a;
+  color: #e82127;
   font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
   font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 1px;
+  letter-spacing: 3px;
   text-transform: uppercase;
+  height: 40px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.2s;
 }
 
-.btn-upgrade:hover { background: var(--red); color: #fff; }
+.upgrade-btn:hover { border-color: #e82127; }
 
-.btn-upgrade.pro {
-  border-color: var(--green);
-  color: var(--green);
-  cursor: default;
-  pointer-events: none;
+.pro-badge {
+  width: 100%;
+  background: transparent;
+  border: 1px solid #1a3a1a;
+  color: #4ade80;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  height: 40px;
+  display: none;
+  align-items: center;
+  justify-content: center;
 }
 
 .results-meta {
@@ -666,6 +687,86 @@ body {
   stroke-linejoin: round;
 }
 
+/* ── Landing Plan Cards ── */
+.landing-plans {
+  display: flex;
+  gap: 16px;
+  margin: 0 auto 48px;
+  max-width: 420px;
+}
+
+.landing-plan-card {
+  flex: 1;
+  background: #111;
+  border: 1px solid #1e1e1e;
+  padding: 24px 16px 20px;
+  text-align: center;
+  position: relative;
+}
+
+.landing-plan-card.pro {
+  border-color: #e82127;
+}
+
+.landing-plan-popular {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111;
+  color: #e82127;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.landing-plan-card h3 {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.landing-plan-card .plan-price {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #666;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.landing-plan-card .plan-leads {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+/* ── Sidebar limit hint ── */
+.limit-hint {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: #444;
+  padding: 0 24px 12px;
+}
+
+.limit-hint a {
+  color: var(--red);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .btn-cta {
   display: inline-block;
   padding: 14px 48px;
@@ -689,8 +790,9 @@ body {
 
 #app {
   display: flex;
-  width: 100%;
-  height: 100vh;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   opacity: 0;
   transition: opacity 0.4s ease;
 }
@@ -725,6 +827,19 @@ body {
         Copy contact info instantly
       </li>
     </ul>
+    <div class="landing-plans">
+      <div class="landing-plan-card">
+        <h3>FREE</h3>
+        <div class="plan-price">$0</div>
+        <div class="plan-leads">5 LEADS / SEARCH</div>
+      </div>
+      <div class="landing-plan-card pro">
+        <span class="landing-plan-popular">MOST POPULAR</span>
+        <h3>PRO</h3>
+        <div class="plan-price">$9.99/MO</div>
+        <div class="plan-leads">15+ LEADS / SEARCH</div>
+      </div>
+    </div>
     <button class="btn-cta" id="ctaBtn">START SEARCHING &rarr;</button>
   </div>
 </div>
@@ -732,38 +847,44 @@ body {
 <!-- App -->
 <div id="app">
 
+<header>
+  <div class="logo">LEAD<span class="red">MAP</span></div>
+  <div class="auth-bar" id="authBar">
+    <button class="auth-btn" id="authBtn">SIGN IN</button>
+  </div>
+</header>
+
+<div class="app-body">
+
 <!-- Sidebar -->
 <aside class="sidebar">
-  <div class="sidebar-header">
-    <div class="logo-row">
-      <div class="logo">LEAD<span>MAP</span></div>
-      <div class="auth-bar" id="authBar">
-        <button class="btn-auth" id="authBtn">Sign In</button>
-      </div>
-    </div>
+  <div class="search-section">
     <div class="field">
-      <label>ZIP Code</label>
+      <label>ZIP CODE</label>
       <input type="text" id="zipInput" placeholder="e.g. 90210" maxlength="10" />
     </div>
     <div class="field">
-      <label>City</label>
+      <label>CITY</label>
       <input type="text" id="cityInput" placeholder="e.g. Beverly Hills" />
     </div>
     <div class="field">
-      <label>Business Category</label>
+      <label>BUSINESS CATEGORY</label>
       <input type="text" id="catInput" placeholder="e.g. Dentists, Plumbers" />
     </div>
-    <button class="btn-search" id="searchBtn">
-      <span class="btn-label">Search Leads</span>
+    <button class="search-btn" id="searchBtn">
+      <span class="btn-label">SEARCH LEADS</span>
       <span class="spinner"></span>
     </button>
-    <button class="btn-upgrade" id="upgradeBtn">&#9889; UPGRADE TO PRO — $9.99/mo</button>
+    <button class="upgrade-btn" id="upgradeBtn">&#9889; UPGRADE TO PRO &mdash; $9.99/mo</button>
+    <div class="pro-badge" id="proBadge">&#10003; PRO PLAN</div>
   </div>
 
   <div class="results-meta" id="resultsMeta" style="display:none">
     <span id="resultsCount">0 leads</span>
     <span class="badge">&#9733; 4.0+</span>
   </div>
+
+  <div class="limit-hint" id="limitHint" style="display:none"></div>
 
   <button class="btn-export" id="exportBtn">↓ EXPORT CSV</button>
 
@@ -779,6 +900,8 @@ body {
   <div class="progress-bar" id="progressBar"></div>
   <div id="map"></div>
 </div>
+
+</div><!-- /app-body -->
 
 <!-- Lead Detail Modal -->
 <div class="modal-overlay" id="modalOverlay">
@@ -838,7 +961,7 @@ if (new URLSearchParams(window.location.search).get('upgraded') === 'true') {
   history.replaceState(null, '', window.location.pathname);
   document.getElementById('landingScreen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
-  setTimeout(() => showToast('Welcome to Pro! You now get 50 leads per search'), 500);
+  setTimeout(() => showToast('Welcome to Pro! You now get 15 leads per search'), 500);
 }
 
 (() => {
@@ -873,10 +996,12 @@ if (new URLSearchParams(window.location.search).get('upgraded') === 'true') {
   const btnSignUp = $('#btnSignUp');
   const authError = $('#authError');
   const upgradeBtn = $('#upgradeBtn');
+  const proBadge = $('#proBadge');
+  const limitHint = $('#limitHint');
 
   // ── Auth UI (delegated so it survives innerHTML replacements) ──
   authBar.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-auth');
+    const btn = e.target.closest('.auth-btn');
     if (!btn) return;
     if (currentUser) {
       sb.auth.signOut({ scope: 'local' });
@@ -968,39 +1093,53 @@ if (new URLSearchParams(window.location.search).get('upgraded') === 'true') {
   });
 
   async function fetchUserPlan() {
-    if (!currentUser) { userPlan = 'free'; return; }
-    const { data } = await sb
-      .from('users')
-      .select('plan')
-      .eq('id', currentUser.id)
-      .single();
-    userPlan = data?.plan || 'free';
+    if (!currentUser || !accessToken) { userPlan = 'free'; return; }
+    try {
+      const res = await fetch('/api/user-plan', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const data = await res.json();
+      userPlan = data.plan || 'free';
+    } catch {
+      userPlan = 'free';
+    }
   }
 
   function renderAuthBar() {
     if (currentUser) {
       authBar.innerHTML = `
         <span class="user-email">${currentUser.email}</span>
-        <button class="btn-auth">Sign Out</button>`;
+        <button class="auth-btn">SIGN OUT</button>`;
     } else {
-      authBar.innerHTML = `<button class="btn-auth">Sign In</button>`;
+      authBar.innerHTML = `<button class="auth-btn">SIGN IN</button>`;
     }
     renderUpgradeBtn();
   }
 
   function renderUpgradeBtn() {
     if (currentUser && userPlan === 'pro') {
-      upgradeBtn.textContent = '\u2713 PRO PLAN';
-      upgradeBtn.classList.add('pro');
       upgradeBtn.style.display = 'none';
+      proBadge.style.display = 'flex';
     } else {
-      upgradeBtn.innerHTML = '&#9889; UPGRADE TO PRO — $9.99/mo';
-      upgradeBtn.classList.remove('pro');
       upgradeBtn.style.display = '';
+      proBadge.style.display = 'none';
+    }
+    renderLimitHint();
+  }
+
+  function renderLimitHint() {
+    if (currentUser && userPlan === 'pro') {
+      limitHint.innerHTML = '15 leads per search';
+    } else {
+      limitHint.innerHTML = '5 leads free · <a id="limitUpgradeLink">Upgrade</a> for 15+';
     }
   }
 
   // ── Upgrade ──
+  limitHint.addEventListener('click', (e) => {
+    if (e.target.id === 'limitUpgradeLink') upgradeBtn.click();
+  });
+
   upgradeBtn.addEventListener('click', async () => {
     if (userPlan === 'pro') return;
     if (!currentUser) {
@@ -1115,11 +1254,14 @@ if (new URLSearchParams(window.location.search).get('upgraded') === 'true') {
       leadList.appendChild(emptyState);
       emptyState.textContent = 'No leads found with \u2605 4.0+';
       resultsMeta.style.display = 'none';
+      limitHint.style.display = 'none';
       exportBtn.style.display = 'none';
       return;
     }
 
     resultsMeta.style.display = 'flex';
+    limitHint.style.display = 'block';
+    renderLimitHint();
     exportBtn.style.display = 'block';
     resultsCount.textContent = `${leads.length} lead${leads.length !== 1 ? 's' : ''}`;
 
