@@ -247,12 +247,15 @@ app.post('/api/create-checkout', wrap(async (req, res) => {
   }
 
   try {
+    const origin = req.headers.origin || req.headers.host;
+    const baseUrl = origin.startsWith('http') ? origin : `https://${origin}`;
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
-      success_url: APP_URL + '?upgraded=true',
-      cancel_url: APP_URL,
+      success_url: `${baseUrl}?upgraded=true`,
+      cancel_url: baseUrl,
       customer_email: user.email,
     });
     res.json({ url: session.url });

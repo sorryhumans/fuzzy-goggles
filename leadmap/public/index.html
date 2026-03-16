@@ -1074,6 +1074,20 @@ if (new URLSearchParams(window.location.search).get('upgraded') === 'true') {
     }
   });
 
+  // ── Plan fetch ──
+  async function fetchUserPlan(token) {
+    if (!token) { userPlan = 'free'; return; }
+    try {
+      const res = await fetch('/api/user-plan', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const d = await res.json();
+      userPlan = d.plan || 'free';
+    } catch {
+      userPlan = 'free';
+    }
+  }
+
   // ── Supabase auth state listener ──
   sb.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
@@ -1082,36 +1096,30 @@ if (new URLSearchParams(window.location.search).get('upgraded') === 'true') {
       authOverlay.classList.remove('open');
       renderAuthBar();
       if (event === 'SIGNED_IN') showToast('Signed in!');
-      await fetchUserPlan();
+      await fetchUserPlan(session.access_token);
       renderUpgradeBtn();
     } else {
       currentUser = null;
       accessToken = null;
       userPlan = 'free';
       renderAuthBar();
+      renderUpgradeBtn();
     }
   });
 
-  async function fetchUserPlan() {
-    if (!currentUser || !accessToken) { userPlan = 'free'; return; }
+  // ── Check existing session on page load ──
+  (async () => {
     try {
-      const { data, error } = await sb
-        .from('users')
-        .select('plan')
-        .eq('id', currentUser.id)
-        .single();
-      if (!error && data?.plan) { userPlan = data.plan; return; }
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user) {
+        currentUser = session.user;
+        accessToken = session.access_token;
+        renderAuthBar();
+        await fetchUserPlan(session.access_token);
+        renderUpgradeBtn();
+      }
     } catch {}
-    try {
-      const res = await fetch('/api/user-plan', {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      const d = await res.json();
-      userPlan = d.plan || 'free';
-    } catch {
-      userPlan = 'free';
-    }
-  }
+  })();
 
   function renderAuthBar() {
     if (currentUser) {
