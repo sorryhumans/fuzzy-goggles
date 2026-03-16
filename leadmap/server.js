@@ -251,3 +251,5 @@ app.post('/api/create-checkout', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`LEADMAP running → http://localhost:${PORT}`);
 });
+
+module.exports = app;
