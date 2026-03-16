@@ -14,5 +14,10 @@
       "src": "/(.*)",
       "dest": "leadmap/server.js"
     }
-  ]
+  ],
+  "functions": {
+    "leadmap/server.js": {
+      "maxDuration": 60
+    }
+  }
 }

@@ -1074,51 +1074,68 @@ if (new URLSearchParams(window.location.search).get('upgraded') === 'true') {
     }
   });
 
-  // ── Plan fetch ──
-  async function fetchUserPlan(token) {
-    if (!token) { userPlan = 'free'; return; }
+  // ── Plan fetch + UI update ──
+  async function updatePlanUI(token) {
+    if (!token) { userPlan = 'free'; renderUpgradeBtn(); return; }
     try {
       const res = await fetch('/api/user-plan', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const d = await res.json();
-      userPlan = d.plan || 'free';
-    } catch {
+      if (!res.ok) throw new Error('Plan fetch failed');
+      const { plan } = await res.json();
+      userPlan = plan || 'free';
+
+      if (userPlan === 'pro') {
+        upgradeBtn.style.display = 'none';
+        proBadge.style.display = 'flex';
+      } else {
+        upgradeBtn.style.display = '';
+        proBadge.style.display = 'none';
+      }
+      renderLimitHint();
+    } catch(e) {
+      console.error('Plan check failed:', e);
       userPlan = 'free';
+      renderUpgradeBtn();
     }
   }
 
   // ── Supabase auth state listener ──
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (session?.user) {
+    if (event === 'SIGNED_IN' && session) {
       currentUser = session.user;
       accessToken = session.access_token;
       authOverlay.classList.remove('open');
       renderAuthBar();
-      if (event === 'SIGNED_IN') showToast('Signed in!');
-      await fetchUserPlan(session.access_token);
-      renderUpgradeBtn();
-    } else {
+      showToast('Signed in!');
+      await updatePlanUI(session.access_token);
+    }
+    if (event === 'SIGNED_OUT') {
       currentUser = null;
       accessToken = null;
       userPlan = 'free';
       renderAuthBar();
       renderUpgradeBtn();
     }
+    if (event === 'TOKEN_REFRESHED' && session) {
+      accessToken = session.access_token;
+    }
   });
 
-  // ── Check existing session on page load ──
+  // ── Check existing session on page load + auto-refresh ──
   (async () => {
     try {
       const { data: { session } } = await sb.auth.getSession();
-      if (session?.user) {
+      if (session) {
+        await sb.auth.refreshSession();
         currentUser = session.user;
         accessToken = session.access_token;
         renderAuthBar();
-        await fetchUserPlan(session.access_token);
-        renderUpgradeBtn();
+        await updatePlanUI(session.access_token);
       }
-    } catch {}
+    } catch(e) {
+      console.error('Session restore failed:', e);
+    }
   })();
 
   function renderAuthBar() {
